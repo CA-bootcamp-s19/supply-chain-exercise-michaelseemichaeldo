@@ -12,11 +12,11 @@ contract SupplyChain {
   address owner;
 
   /* Add a variable called skuCount to track the most recent sku # */
-  uint skuCount;   
+  uint skuCount;
   /* Add a line that creates a public mapping that maps the SKU (a number) to an Item.
      Call this mappings items
   */
-  mapping (uint => Item) items;
+  mapping (uint => Item) public items;
 
   /* Add a line that creates an enum called State. This should have 4 states
     ForSale
@@ -80,7 +80,8 @@ contract SupplyChain {
    Hint: What item properties will be non-zero when an Item has been added?
    */
   modifier forSale(uint sku){
-    require (items[sku].state == State.ForSale, "Item not for Sale");
+    require (items[sku].state == State.ForSale, "Item not for sale");
+    require (items[sku].price > 0, "Item not for sale, no price");
      _;
   }
   modifier sold(uint sku){
@@ -105,7 +106,7 @@ contract SupplyChain {
   }
 
   function addItem(string memory _name, uint _price) public returns(bool){
-    emit LogForSale(skuCount);   
+    emit LogForSale(skuCount);
     items[skuCount] = Item({name: _name, sku: skuCount, price: _price, state: State.ForSale, seller: msg.sender, buyer: address(0)});
     skuCount = skuCount + 1;
     return true;
@@ -118,9 +119,11 @@ contract SupplyChain {
     refunded any excess ether sent. Remember to call the event associated with this function!*/
 
   function buyItem(uint sku)
-    public payable
+    public payable forSale(sku) paidEnough(msg.value) checkValue(sku)
   {
     items[sku].buyer = msg.sender;
+    items[sku].seller.transfer(items[sku].price);
+    items[sku].state = State.Sold;
     emit LogSold(sku);
   }
 
